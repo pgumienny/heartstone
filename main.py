@@ -22,19 +22,20 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 
 
 batch_size = 128
-embedding_size = 32  # Dimension of the embedding vector.
-skip_window = 1  # How many words to consider left and right.
-num_skips = 2  # How many times to reuse an input to generate a label.
+embedding_size = 128  # Dimension of the embedding vector.
+skip_window = 2  # How many words to consider left and right.
+num_skips = 4  # How many times to reuse an input to generate a label.
 num_sampled = 64  # Number of negative examples to sample.
-num_step = 100000 # number of DL steps
-LOGDIR = "logs3/" # Log directory
+num_step = 10000000 # number of DL steps
+LOGDIR = "biglog/" # Log directory
 
 def process_file(filename):
 	# print(filename)
 	filename = LOGDIR + filename
 	moves = get_moves_lists(filename)
 	if moves:
-		return moves[0] + ["."] + moves[1] + ["."]
+		# return moves[0] + ["game_end_end"] + moves[1] + ["."]
+		return moves[0] + ["game_end_end"]
 	else:
 		return []
 
@@ -50,9 +51,10 @@ def get_moves_lists(filename):
 					active_player = step[0]['active_player']
 					move = step[1]['player_move'].split()
 					if move[0] == "Play:":
-						move = ' '.join(move[3:])
+						move = ' '.join(move[3:]).replace(' ', '_')
 						# print("Play(" + str(active_player) + ") = " + move)
-						move_list[active_player].append(move)
+						# move_list[active_player].append(move)
+						move_list[0].append(move)
 		return move_list
 	except:
 		return [[],[]]
@@ -60,8 +62,17 @@ def get_moves_lists(filename):
 
 pool = ThreadPool(8)
 text = pool.map(process_file, os.listdir(LOGDIR))
+
+# text = ""
+# with open('text.txt', 'r') as myfile:
+#     text=myfile.read().replace('\n', ' ').split()
+
+
+
 text = list(itertools.chain.from_iterable(text))
-# print ("\n".join(text))
+print(" ".join(text))
+
+
 word_to_index = defaultdict(count(1).__next__)
 
 ###
@@ -75,13 +86,17 @@ word_ids = []
 for word in text:
 	word_ids.append(word_to_index[word])
 
-# print(word_to_index)
+# print(word_to_index, file=sys.stderr)
 # print(' '.join(str(x) for x in word_ids))
 # print(" ".join(word_ids))
 
 vocabulary_size = max(word_ids) + 1
 
 print("text calculated", file=sys.stderr)
+print("vocabulary_size = ", vocabulary_size, file=sys.stderr)
+print("text_length = ", len(text), file=sys.stderr)
+
+sys.exit()
 
 data = word_ids
 data_index = 0
@@ -147,11 +162,12 @@ with tf.Session() as sess:
 			feed_dict=feed_dict)
 		average_loss += loss_val
 
-		if step % 100 == 0:
+		if step % 1000 == 0:
 			if step > 0:
-				average_loss /= 100
-				# The average loss is an estimate of the loss over the last 100 batches.
-				print('Average loss at step ', step, ': ', average_loss)
+				average_loss /= 1000
+				# The average loss is an estimate of the loss over the last 1000 batches.
+				print(step, ', ', average_loss)
+				sys.stdout.flush()
 				average_loss = 0
 
 
