@@ -127,6 +127,8 @@ for i in range(8):
 batch_size = 64
 embedding_size = 16  # Dimension of the embedding vector.
 num_sampled = 64  # Number of negative examples to sample.
+num_steps = 100001 # Training steps
+
 
 # We pick a random validation set to sample nearest neighbors. Here we limit the
 # validation samples to the words that have a low numeric ID, which by
@@ -203,7 +205,7 @@ with graph.as_default():
   saver = tf.train.Saver()
 
 # Step 5: Begin training.
-num_steps = 100001
+
 
 with tf.Session(graph=graph) as session:
   # Open a writer to write summaries.
