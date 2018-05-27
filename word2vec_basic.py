@@ -57,10 +57,13 @@ def read_data(filename):
     text = myfile.read().split()
   return text
 
+# HENI - FILENAME
+
 vocabulary = read_data("play_log_2_sample")
 print('Data size', len(vocabulary)//2)
 
 # Step 2: Build the dictionary and replace rare words with UNK token.
+# HENI - tutaj ustawiamy ile slow ma rozwazac. Bierze vocabulary_size najczestszych slow, reszte zastepuje tokenem UNK
 vocabulary_size = 350
 
 
@@ -118,7 +121,7 @@ for i in range(8):
   print(batch[i], reverse_dictionary[batch[i]], '->', labels[i, 0],
         reverse_dictionary[labels[i, 0]])
 
-# SETTINGS
+# HENI - SETTINGS
 
 # Step 4: Build and train a skip-gram model.
 batch_size = 64
