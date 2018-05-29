@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+import time
 import math
 import os
 import sys
@@ -104,31 +105,33 @@ print('Data size', len(vocabulary)//2)
 
 # Step 2: Build the dictionary and replace rare words with UNK token.
 # HENI - tutaj ustawiamy ile slow ma rozwazac. Bierze vocabulary_size najczestszych slow, reszte zastepuje tokenem UNK
-vocabulary_size = 350
 
-
-def build_dataset(words, n_words):
+def build_dataset(words):
   """Process raw inputs into a dataset."""
-  count = [['UNK', -1]]
-  count.extend(collections.Counter(words).most_common(n_words - 1))
+  count = []
+  # count.extend(collections.Counter(words).most_common(n_words - 1))
+  count.extend(collections.Counter(words).most_common())
   dictionary = dict()
   for word, _ in count:
     dictionary[word] = len(dictionary)
   data = list()
-  unk_count = 0
+  # unk_count = 0
   for word in words:
     index = dictionary.get(word, 0)
-    if index == 0:  # dictionary['UNK']
-      unk_count += 1
+    # if index == 0:  # dictionary['UNK']
+      # unk_count += 1
     data.append(index)
-  count[0][1] = unk_count
+  # count[0][1] = unk_count
   reversed_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
   data = [data[::2],data[1::2]]
   new_data = list()
   for i in range(len(data[0])):
     new_data.append([data[0][i],data[1][i]])
   data = new_data
-  return data, count, dictionary, reversed_dictionary
+  vocabulary_size = len(dictionary)
+  print("\n\ndictionary size = ")
+  print(len(dictionary))
+  return data, count, dictionary, reversed_dictionary, vocabulary_size
 
 
 # Filling 4 global variables:
@@ -137,19 +140,19 @@ def build_dataset(words, n_words):
 # count - map of words(strings) to count of occurrences
 # dictionary - map of words(strings) to their codes(integers)
 # reverse_dictionary - maps codes(integers) to words(strings)
-data, count, dictionary, reverse_dictionary = build_dataset(
-    vocabulary, vocabulary_size)
+data, count, dictionary, reverse_dictionary, vocabulary_size = build_dataset(vocabulary)
 del vocabulary  # Hint to reduce memory.
 print('Most common words (+UNK)', count[:5])
 print('Sample data', data[0][:10], [reverse_dictionary[i] for i in data[0][:10]])
 
 data_index = 0
-
+last_time = None
 
 # Step 3: Function to generate a training batch for the skip-gram model.
 def generate_batch(batch_size):
   global data_index
   global data
+  global last_time
   batch = np.ndarray(shape=(batch_size), dtype=np.int32)
   labels = np.ndarray(shape=(batch_size, 1), dtype=np.int32)
 
@@ -158,6 +161,11 @@ def generate_batch(batch_size):
     labels[i] = data[data_index][1]
     data_index = data_index + 1
     if data_index == len(data):
+      if last_time != None:
+        time_diff = time.time() - last_time
+        print("\n\nLast generation took ", time_diff, " seconds")
+        print("Words per second: ", len(data)/time_diff, "\n\n")
+      last_time = time.time()
       data_index = 0
       shuffle(data)
 
@@ -264,6 +272,8 @@ with tf.Session(graph=graph) as session:
   print('Initialized')
 
   average_loss = 0
+  last_time = time.time()
+
   for step in xrange(num_steps):
     batch_inputs, batch_labels = generate_batch(batch_size)
     feed_dict = {train_inputs: batch_inputs, train_labels: batch_labels}
