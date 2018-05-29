@@ -26,11 +26,33 @@ import argparse
 import random
 from tempfile import gettempdir
 import zipfile
+from random import shuffle
 
 import numpy as np
 from six.moves import urllib
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
+
+
+import tensorflow as tf
+import json
+import sys
+import os
+import math
+import functools
+from itertools import count
+import itertools
+from collections import defaultdict
+from multiprocessing.dummy import Pool as ThreadPool
+import numpy as np
+
+
+import collections
+import argparse
+import random
+from tempfile import gettempdir
+import zipfile
+
 
 from tensorflow.contrib.tensorboard.plugins import projector
 
@@ -44,6 +66,11 @@ parser.add_argument(
     type=str,
     default=os.path.join(current_path, 'log_tb'),
     help='The log directory for TensorBoard summaries.')
+parser.add_argument(
+    '--input_file',
+    type=str,
+    default="play_log_2_sample",
+    help='The input file')
 FLAGS, unparsed = parser.parse_known_args()
 
 # Create the directory for TensorBoard variables if there is not.
@@ -51,15 +78,28 @@ if not os.path.exists(FLAGS.log_dir):
   os.makedirs(FLAGS.log_dir)
 
 
+
+
 def read_data(filename):
   text = ""
   with open(filename, 'r') as myfile:
     text = myfile.read().split()
+  card_type = {}
+
+  j = json.load(open("cards.json", 'r'))
+  for card in j:
+    if "name" in card and "cardClass" in card:
+      card_type[card["name"].replace(" ", "_")] = card["cardClass"]
+
+  for i in range(len(text)):
+    if text[i] in card_type:
+      text[i] = text[i] + "___" + card_type[text[i]]
   return text
 
 # HENI - FILENAME
 
-vocabulary = read_data("play_log_2_sample")
+vocabulary = read_data(FLAGS.input_file)
+# vocabulary = vocabulary[0:32*1024]
 print('Data size', len(vocabulary)//2)
 
 # Step 2: Build the dictionary and replace rare words with UNK token.
@@ -84,6 +124,10 @@ def build_dataset(words, n_words):
   count[0][1] = unk_count
   reversed_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
   data = [data[::2],data[1::2]]
+  new_data = list()
+  for i in range(len(data[0])):
+    new_data.append([data[0][i],data[1][i]])
+  data = new_data
   return data, count, dictionary, reversed_dictionary
 
 
@@ -105,13 +149,17 @@ data_index = 0
 # Step 3: Function to generate a training batch for the skip-gram model.
 def generate_batch(batch_size):
   global data_index
+  global data
   batch = np.ndarray(shape=(batch_size), dtype=np.int32)
   labels = np.ndarray(shape=(batch_size, 1), dtype=np.int32)
 
   for i in range(batch_size):
-    batch[i] = data[0][data_index + i]
-    labels[i] = data[1][data_index + i]
-    data_index = (data_index + 1) % len(data)
+    batch[i] = data[data_index][0]
+    labels[i] = data[data_index][1]
+    data_index = data_index + 1
+    if data_index == len(data):
+      data_index = 0
+      shuffle(data)
 
   return batch, labels
 
@@ -185,7 +233,7 @@ with graph.as_default():
 
   # Construct the SGD optimizer using a learning rate of 1.0.
   with tf.name_scope('optimizer'):
-    optimizer = tf.train.GradientDescentOptimizer(1.0).minimize(loss)
+    optimizer = tf.train.GradientDescentOptimizer(0.2).minimize(loss)
 
   # Compute the cosine similarity between minibatch examples and all embeddings.
   norm = tf.sqrt(tf.reduce_sum(tf.square(embeddings), 1, keep_dims=True))
