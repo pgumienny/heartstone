@@ -182,7 +182,7 @@ for i in range(8):
 # Step 4: Build and train a skip-gram model.
 batch_size = 64
 embedding_size = 16  # Dimension of the embedding vector.
-num_sampled = 64  # Number of negative examples to sample.
+num_sampled = 8  # Number of negative examples to sample.
 num_steps = 100001 # Training steps
 
 
@@ -332,7 +332,7 @@ with tf.Session(graph=graph) as session:
   config = projector.ProjectorConfig()
   embedding_conf = config.embeddings.add()
   embedding_conf.tensor_name = embeddings.name
-  embedding_conf.metadata_path = os.path.join(FLAGS.log_dir, 'metadata.tsv')
+  embedding_conf.metadata_path = 'metadata.tsv'
   projector.visualize_embeddings(writer, config)
 
 writer.close()
